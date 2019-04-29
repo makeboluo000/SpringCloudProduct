@@ -9,6 +9,9 @@ import com.imooc.product.enums.ResultEnum;
 import com.imooc.product.exception.ProductException;
 import com.imooc.product.repository.ProductInfoRepository;
 import com.imooc.product.service.ProductService;
+import com.imooc.product.util.JsonUtil;
+import com.rabbitmq.tools.json.JSONUtil;
+import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,6 +25,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private ProductInfoRepository repository;
+
+    @Autowired
+    private AmqpTemplate amqpTemplate;
 
     @Override
     public List<ProductInfo> findUpAll() {
@@ -55,6 +61,11 @@ public class ProductServiceImpl implements ProductService {
 
             productInfo.setProductStock(result);
             repository.save(productInfo);
+
+            ProductInfoOutput output = new ProductInfoOutput();
+            BeanUtils.copyProperties(productInfo, output);
+            // 发送MQ消息
+            amqpTemplate.convertAndSend("productInfo", JsonUtil.toJson(output));
 
         }
     }

@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: product
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        service-id: CONFIG
+      profile: test
+    stream:
+      bindings:
+        myMsgIn:
+          group: order
+          content-type: application/json
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8671/eureka/

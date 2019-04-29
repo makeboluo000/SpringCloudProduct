@@ -28,4 +28,6 @@ public class ProductInfoOutput {
     // 类目编号
     private Integer categoryType;
 
+    private String productId;
+
 }
