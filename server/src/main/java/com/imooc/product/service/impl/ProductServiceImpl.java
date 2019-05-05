@@ -10,13 +10,13 @@ import com.imooc.product.exception.ProductException;
 import com.imooc.product.repository.ProductInfoRepository;
 import com.imooc.product.service.ProductService;
 import com.imooc.product.util.JsonUtil;
-import com.rabbitmq.tools.json.JSONUtil;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,8 +45,24 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+
+    public void decreaseStock(List<DecreaseStockInput> decreaseStockInputList) {
+        List<ProductInfo> list = decreaseStockProcess(decreaseStockInputList);
+
+        List<ProductInfoOutput> productInfoOutputList = list.stream().map(e -> {
+            ProductInfoOutput output = new ProductInfoOutput();
+            BeanUtils.copyProperties(e, output);
+            return output;
+        }).collect(Collectors.toList());
+
+        // 发送MQ消息
+        amqpTemplate.convertAndSend("productInfo", JsonUtil.toJson(productInfoOutputList));
+
+    }
+
     @Transactional
-    public void decreaseStock(List<DecreaseStockInput> cartDTOList) {
+    public List<ProductInfo> decreaseStockProcess(List<DecreaseStockInput> cartDTOList) {
+        List<ProductInfo> list = new ArrayList<>();
         for (DecreaseStockInput decreaseStockInput: cartDTOList) {
             ProductInfo productInfo = repository.findById(decreaseStockInput.getProductId()).get();
             if (productInfo == null) {
@@ -61,13 +77,11 @@ public class ProductServiceImpl implements ProductService {
 
             productInfo.setProductStock(result);
             repository.save(productInfo);
-
-            ProductInfoOutput output = new ProductInfoOutput();
-            BeanUtils.copyProperties(productInfo, output);
-            // 发送MQ消息
-            amqpTemplate.convertAndSend("productInfo", JsonUtil.toJson(output));
-
+            list.add(productInfo);
         }
+
+        return list;
+
     }
 
 }
